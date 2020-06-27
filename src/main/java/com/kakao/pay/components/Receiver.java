@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 public class Receiver {
@@ -14,27 +16,25 @@ public class Receiver {
     private SendRepository sendRepository;
 
     public ReceiveResponse receive(String token, Integer xUserId, String xRoomId){
-        ReceiveResponse receiveResponse = new ReceiveResponse();
         List<Send> sends = this.sendRepository.findByRoomIdAndToken(xRoomId, token);
         if (sends.size() == 0) {
-            receiveResponse.setSuccess(false);
-            receiveResponse.setReason("해당 RoomId, Token으로 등록된 이력이 없음");
-            return receiveResponse;
+            return new ReceiveResponse(false, 3, "해당 RoomId, Token으로 등록된 이력이 없음");
         }
 
+        System.out.println("size:" +sends.size());
         // 한 사용자는 한번만 받을 수 있음
-        if(sends.stream().filter(send -> send.getReceiver().equals(xUserId)).findAny().isPresent()) {
-            receiveResponse.setSuccess(false);
-            receiveResponse.setReason("두번 이상 받을 수 없음");
-            return receiveResponse;
+        List<Integer> checkDuplicate = sends.stream()
+                .map(send -> send.getReceiver())
+                .collect(Collectors.toList());
+
+        if(checkDuplicate.indexOf(xUserId) > 0) {
+            return new ReceiveResponse(false, 1, "두번 이상 받을 수 없음");
         }
 
         // 1개를 선택해서 true 처리 한다.
         Send send = sends.get(0);
         if (send.getUserId().equals(xUserId)) {
-            receiveResponse.setSuccess(false);
-            receiveResponse.setReason("본인이 받을 수 없음");
-            return receiveResponse;
+            return new ReceiveResponse(false, 2, "본인이 받을 수 없음");
         }
 
         send.setCompleted(true);
@@ -42,7 +42,7 @@ public class Receiver {
         send.setPrice(send.getPrice());
         this.sendRepository.save(send);
 
-        return receiveResponse;
+        return new ReceiveResponse(true, 0, send.getPrice(), "ok");
 
     }
 }

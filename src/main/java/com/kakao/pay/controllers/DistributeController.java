@@ -3,6 +3,7 @@ package com.kakao.pay.controllers;
 import com.kakao.pay.components.Distributer;
 import com.kakao.pay.components.Receiver;
 import com.kakao.pay.maker.TokenMaker;
+import com.kakao.pay.responses.ReceiveResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,14 +46,21 @@ public class DistributeController {
 
     // 받기
     @GetMapping(value = "/receive")
-    public String receive(
+    public ResponseEntity<String> receive(
             @RequestHeader("X-USER-ID") Integer x_user_id,
             @RequestHeader("X-ROOM-ID") String x_room_id,
             @RequestParam String token
     ){
 
-        this.receiver.receive(token, x_user_id, x_room_id);
-
-        return "receive";
+        ReceiveResponse receiveResponse = this.receiver.receive(token, x_user_id, x_room_id);
+        if(receiveResponse.getSuccess()){
+            return new ResponseEntity<>(
+                    receiveResponse.getPrice().toString(),
+                    HttpStatus.OK);
+        }else{
+            return new ResponseEntity<>(
+                    receiveResponse.getReason(),
+                    HttpStatus.EXPECTATION_FAILED);
+        }
     }
 }
